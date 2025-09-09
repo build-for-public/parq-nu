@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  parqnu-app:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+      args:
+        # Plumb build-time env for Next.js static build
+        NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:-}
+    ports:
+      - "8080:80"
+    volumes:
+      - ../app/data:/app/data
+    environment:
+      - TZ=Europe/Stockholm
+      # Runtime environment variables (edit or set via shell env)
+      - GOTHENBURG_API_KEY=${GOTHENBURG_API_KEY:-}
+      - NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:-}
+    restart: unless-stopped

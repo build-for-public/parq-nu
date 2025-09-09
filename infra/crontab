@@ -1,0 +1,2 @@
+# Run parking data download script daily at 3:00 AM
+0 3 * * * cd /app && /app/venv/bin/python /app/jobs/download_parking_data.py >> /var/log/cron.log 2>&1
