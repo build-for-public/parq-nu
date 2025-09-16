@@ -5,7 +5,8 @@ import { Loader } from "@googlemaps/js-api-loader"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { MapPin, Car, Clock, DollarSign, Search, Filter, Navigation } from "lucide-react"
+import { MapPin, Car, Clock, DollarSign, Search, Filter, Navigation, Info } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface ParkingSpace {
   id: string
@@ -18,6 +19,8 @@ interface ParkingSpace {
   maxTimeLimit: string
   type: string
   amenities: string[]
+  maxParkingLimitation: string
+  isPaid: boolean
 }
 
 interface ParkingSpaceWithDistance extends ParkingSpace {
@@ -368,7 +371,8 @@ export default function ParkingFinderApp() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
+    <TooltipProvider>
+      <div className="flex flex-col h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b p-3 md:p-4">
         <div className="flex items-center justify-between mb-3">
@@ -449,10 +453,15 @@ export default function ParkingFinderApp() {
               
               <div className="space-y-3">
                 {filteredSpacesWithDistance.map((space: ParkingSpaceWithDistance) => {
+                  console.log(space)
                   return (
                     <div
                       key={space.id}
-                      className="flex items-start justify-between p-3 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 active:bg-gray-200 transition-colors"
+                      className={`flex items-start justify-between p-3 rounded-xl cursor-pointer transition-colors ${
+                        !space.isPaid 
+                          ? "bg-green-50 hover:bg-green-100 active:bg-green-200 border border-green-200" 
+                          : "bg-gray-50 hover:bg-gray-100 active:bg-gray-200"
+                      }`}
                       onClick={() => {
                         map?.panTo({ lat: space.lat, lng: space.lng })
                         map?.setZoom(17)
@@ -460,16 +469,35 @@ export default function ParkingFinderApp() {
                       }}
                     >
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm text-gray-900 truncate">{space.name}</p>
-                        <div className="flex items-center gap-4 mt-1 text-xs text-gray-600">
-                          <span className="flex items-center gap-1">
-                            <Car className="h-3 w-3 flex-shrink-0" />
-                            {space.availableSpaces}/{space.totalSpaces}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <DollarSign className="h-3 w-3 flex-shrink-0" />
-                            {space.hourlyRate} kr/h
-                          </span>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-sm text-gray-900 truncate">{space.name}</p>
+                          {!space.isPaid && (
+                            <span className="px-2 py-0.5 text-xs font-semibold text-green-700 bg-green-100 rounded-full flex-shrink-0">
+                              FREE
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between mt-1">
+                          <div className="flex items-center gap-4 text-xs text-gray-600">
+                            <span className="flex items-center gap-1">
+                              <Car className="h-3 w-3 flex-shrink-0" />
+                              {space.availableSpaces}/{space.totalSpaces}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <DollarSign className="h-3 w-3 flex-shrink-0" />
+                              {space.hourlyRate} kr/h
+                            </span>
+                          </div>
+                          {space.maxParkingLimitation && space.maxParkingLimitation.length > 0 && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info className="h-4 w-4 text-blue-600 hover:text-blue-700 active:text-blue-800 cursor-help flex-shrink-0 touch-manipulation p-1 rounded-full hover:bg-blue-50 active:bg-blue-100" />
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xs" side="top">
+                                <p className="text-sm">{space.maxParkingLimitation}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
                         </div>
                       </div>
                       <div className="text-right ml-3 flex-shrink-0">
@@ -497,6 +525,8 @@ export default function ParkingFinderApp() {
                     key={space.id}
                     className={`cursor-pointer transition-all hover:shadow-md ${
                       selectedSpace?.id === space.id ? "ring-2 ring-blue-500" : ""
+                    } ${
+                      !space.isPaid ? "bg-green-50 border-green-200" : ""
                     }`}
                     onClick={() => {
                       map?.panTo({ lat: space.lat, lng: space.lng })
@@ -506,7 +536,14 @@ export default function ParkingFinderApp() {
                   >
                     <CardHeader className="pb-2">
                       <div className="flex items-start justify-between">
-                        <CardTitle className="text-sm font-medium">{space.name}</CardTitle>
+                        <div className="flex items-center gap-2">
+                          <CardTitle className="text-sm font-medium">{space.name}</CardTitle>
+                          {!space.isPaid && (
+                            <span className="px-2 py-1 text-xs font-semibold text-green-700 bg-green-100 rounded-full">
+                              FREE
+                            </span>
+                          )}
+                        </div>
                         <div className="flex flex-col items-end gap-1">
                           <div className={`text-xs font-medium ${getAvailabilityColor(space.availableSpaces)}`}>
                             {getAvailabilityText(space.availableSpaces)}
@@ -529,10 +566,37 @@ export default function ParkingFinderApp() {
                           <DollarSign className="h-4 w-4" />
                           <span>{space.hourlyRate} kr/hour</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4" />
-                          <span>Max: {space.maxTimeLimit}</span>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4" />
+                            <span>Max: {space.maxTimeLimit}</span>
+                          </div>
+                          
                         </div>
+                        
+                          {space.maxParkingLimitation && space.maxParkingLimitation.length > 0  && (
+                            <div className="flex items-center">
+                            <span className="text-sm text-gray-600">Parking Limitation:</span>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info className="h-6 w-6 text-blue-600 hover:text-blue-700 active:text-blue-800 cursor-help touch-manipulation p-1 rounded-full hover:bg-blue-50 active:bg-blue-100" />
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xs" side="top">
+                                <p className="text-sm">{space.maxParkingLimitation}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                            </div>
+                          )}
+                          
+                          <a
+                                href={`https://www.google.com/maps/dir/?api=1&destination=${space.lat},${space.lng}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700"
+                              >
+                                <Navigation className="h-4 w-4" />
+                                <span>Get directions</span>
+                              </a>
                       </div>
                     </CardContent>
                   </Card>
@@ -542,6 +606,7 @@ export default function ParkingFinderApp() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </TooltipProvider>
   )
 }
